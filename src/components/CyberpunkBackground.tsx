@@ -24,20 +24,12 @@ export const CyberpunkBackground = () => {
         window.addEventListener('resize', resize);
 
         const drawGrid = () => {
-            // Detect Theme
-            const isDark = document.documentElement.classList.contains('dark');
-
-            // Theme Config
-            const colors = isDark ? {
+            // Theme Config (Enforced Dark Mode)
+            const colors = {
                 bgTop: '#020202',
                 bgMid: '#050505',
                 bgBot: '#0a0a0a',
                 line: '0, 212, 255' // Cyan
-            } : {
-                bgTop: '#ffffff',
-                bgMid: '#f1f5f9', // Slate 100
-                bgBot: '#e2e8f0', // Slate 200
-                line: '51, 65, 85' // Slate 700 (Dark Gray)
             };
 
             // Clear with a gradient background
