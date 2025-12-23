@@ -115,42 +115,30 @@ export const useExpenses = (userId: string) => {
         // Immediate Local Update (Fast)
         setExpenses(prev => [...prev, ...newExpenses]);
 
-        // 2. Sync in background
-        // We will process in chunks of 50 to respect browser limits
-        const processChunk = async (chunk: Expense[]) => {
-            try {
-                const res = await fetch(`${getApiUrl()}/expenses/batch`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId, expenses: chunk })
-                });
-                if (!res.ok) {
-                    const errorText = await res.text();
-                    throw new Error(`Server responded with ${res.status}: ${errorText}`);
-                }
-            } catch (e) {
-                console.error("Failed to sync batch:", e);
-                throw e; // Re-throw to stop processing
-            }
-        };
-
         try {
-            const chunkSize = 50;
-            let processed = 0;
+            if (onProgress) onProgress(50);
 
-            for (let i = 0; i < newExpenses.length; i += chunkSize) {
-                const chunk = newExpenses.slice(i, i + chunkSize);
-                await processChunk(chunk);
+            // Single Batch Request
+            const API_URL = getApiUrl();
+            const res = await fetch(`${API_URL}/expenses/batch`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, expenses: newExpenses })
+            });
 
-                processed += chunk.length;
-                const percent = Math.round((processed / newExpenses.length) * 100);
-                if (onProgress) onProgress(percent);
+            if (onProgress) onProgress(100);
+
+            if (!res.ok) {
+                const txt = await res.text();
+                console.error("Server batch import failed:", txt);
+                alert("Saved locally, but server sync failed: " + txt);
+            } else {
+                channelRef.current?.postMessage('update');
             }
-            // Final Sync Signal
-            channelRef.current?.postMessage('update');
+
         } catch (error) {
-            console.error("Import sync error (background):", error);
-            alert("Error: Server could not save data. Please check if the server is running.");
+            console.error("Import error:", error);
+            alert("Saved locally. Server unreachable.");
         }
     }, [userId]);
 
