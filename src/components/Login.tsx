@@ -20,8 +20,10 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
 
-    // Base API URL (Dynamically detects IP for Mobile support)
-    const API_URL = `http://${window.location.hostname}:3001/api`;
+    // Base API URL (Dynamically detects IP for Mobile support, allows Vercel relative path)
+    const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? `http://${window.location.hostname}:3001/api`
+        : '/api';
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
