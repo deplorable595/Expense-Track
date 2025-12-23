@@ -60,16 +60,13 @@ export const useExpenses = (userId: string) => {
         };
         window.addEventListener('focus', onFocus);
 
-        // Polling (Every 5 seconds) to ensure server consistency
-        const pollInterval = setInterval(() => {
-            // console.log("[Polling] Checking server for updates..."); // Optional: reduce noise
-            fetchExpenses();
-        }, 5000);
+        // Polling Removed for Local Stability
+        // const pollInterval = setInterval(() => { ... });
 
         return () => {
             channelRef.current?.close();
             window.removeEventListener('focus', onFocus);
-            clearInterval(pollInterval);
+            // clearInterval(pollInterval);
         };
     }, [fetchExpenses]);
 
