@@ -16,7 +16,7 @@ const DATA_FILE = process.env.VERCEL ? path.join(os.tmpdir(), 'database.json') :
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '10mb' }));
 
 // MongoDB Configuration
 let mongoCollection = null;

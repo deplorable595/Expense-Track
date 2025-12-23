@@ -119,13 +119,18 @@ export const useExpenses = (userId: string) => {
         // We will process in chunks of 50 to respect browser limits
         const processChunk = async (chunk: Expense[]) => {
             try {
-                await fetch(`${getApiUrl()}/expenses/batch`, {
+                const res = await fetch(`${getApiUrl()}/expenses/batch`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId, expenses: chunk })
                 });
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    throw new Error(`Server responded with ${res.status}: ${errorText}`);
+                }
             } catch (e) {
                 console.error("Failed to sync batch:", e);
+                throw e; // Re-throw to stop processing
             }
         };
 
@@ -145,6 +150,7 @@ export const useExpenses = (userId: string) => {
             channelRef.current?.postMessage('update');
         } catch (error) {
             console.error("Import sync error (background):", error);
+            alert("Error: Server could not save data. Please check if the server is running.");
         }
     }, [userId]);
 
