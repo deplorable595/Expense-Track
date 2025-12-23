@@ -5,7 +5,6 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
-import mysql from 'mysql2/promise';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,10 +17,6 @@ const DATA_FILE = process.env.VERCEL ? path.join(os.tmpdir(), 'database.json') :
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 
-// MySQL Configuration
-let mysqlPool = null;
-const MYSQL_URL = process.env.MYSQL_URL; // e.g., mysql://user:pass@host:port/db
-
 // Initial Data Template
 const getInitialData = () => ({
     users: {
@@ -33,88 +28,38 @@ const getInitialData = () => ({
     loginLogs: []
 });
 
-// Database / File Helpers (Async for DB support)
+// Database / File Helpers
 const ensureDatabase = async () => {
-    if (MYSQL_URL) {
-        // MySQL Mode
+    if (!fs.existsSync(DATA_FILE)) {
         try {
-            if (!mysqlPool) {
-                mysqlPool = mysql.createPool(MYSQL_URL);
-                console.log("✅ Connected to MySQL");
-            }
-
-            // Create table if not exists
-            const connection = await mysqlPool.getConnection();
-            await connection.query(`
-                CREATE TABLE IF NOT EXISTS app_store (
-                    id INT PRIMARY KEY DEFAULT 1,
-                    data LONGTEXT
-                )
-            `);
-
-            // Check for initial data
-            const [rows] = await connection.query('SELECT data FROM app_store WHERE id = 1');
-            if (rows.length === 0) {
-                console.log("Initializing MySQL with default data...");
-                const initialData = JSON.stringify(getInitialData());
-                await connection.query('INSERT INTO app_store (id, data) VALUES (1, ?)', [initialData]);
-            }
-            connection.release();
+            fs.writeFileSync(DATA_FILE, JSON.stringify(getInitialData(), null, 2));
+            console.log(`Created local database at ${DATA_FILE}`);
         } catch (e) {
-            console.error("❌ MySQL Connection Error:", e);
-        }
-    } else {
-        // File Mode
-        if (!fs.existsSync(DATA_FILE)) {
-            try {
-                fs.writeFileSync(DATA_FILE, JSON.stringify(getInitialData(), null, 2));
-            } catch (e) {
-                console.error("Error creating local DB file:", e);
-            }
+            console.error("Error creating local DB file:", e);
         }
     }
 };
 
 const readData = async () => {
-    if (mysqlPool) {
-        try {
-            const [rows] = await mysqlPool.query('SELECT data FROM app_store WHERE id = 1');
-            if (rows.length > 0 && rows[0].data) {
-                return typeof rows[0].data === 'string' ? JSON.parse(rows[0].data) : rows[0].data;
-            }
-            return getInitialData();
-        } catch (e) {
-            console.error("MySQL Read Error", e);
-            return getInitialData();
+    try {
+        if (!fs.existsSync(DATA_FILE)) {
+            await ensureDatabase();
         }
-    } else {
-        try {
-            if (!fs.existsSync(DATA_FILE)) {
-                await ensureDatabase();
-            }
-            const data = fs.readFileSync(DATA_FILE, 'utf8');
-            const parsed = JSON.parse(data);
-            if (!parsed.loginLogs) parsed.loginLogs = [];
-            return parsed;
-        } catch (err) {
-            return getInitialData();
-        }
+        const data = fs.readFileSync(DATA_FILE, 'utf8');
+        const parsed = JSON.parse(data);
+        if (!parsed.loginLogs) parsed.loginLogs = [];
+        return parsed;
+    } catch (err) {
+        console.error("Read Error:", err);
+        return getInitialData();
     }
 };
 
 const writeData = async (data) => {
-    if (mysqlPool) {
-        try {
-            const jsonStr = JSON.stringify(data);
-            await mysqlPool.query(
-                'INSERT INTO app_store (id, data) VALUES (1, ?) ON DUPLICATE KEY UPDATE data = VALUES(data)',
-                [jsonStr]
-            );
-        } catch (e) {
-            console.error("MySQL Write Error", e);
-        }
-    } else {
+    try {
         fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+    } catch (e) {
+        console.error("Write Error:", e);
     }
 };
 
