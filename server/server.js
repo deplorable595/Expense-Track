@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
-import { MongoClient } from 'mongodb';
+import mysql from 'mysql2/promise';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,11 +18,9 @@ const DATA_FILE = process.env.VERCEL ? path.join(os.tmpdir(), 'database.json') :
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 
-// MongoDB Configuration
-// MongoDB Configuration
-let mongoClient = null;
-let mongoCollection = null;
-const MONGO_URI = process.env.MONGODB_URI;
+// MySQL Configuration
+let mysqlPool = null;
+const MYSQL_URL = process.env.MYSQL_URL; // e.g., mysql://user:pass@host:port/db
 
 // Initial Data Template
 const getInitialData = () => ({
@@ -35,96 +33,93 @@ const getInitialData = () => ({
     loginLogs: []
 });
 
-// Robust Database Connection (Singleton Promise)
-let connectionPromise = null;
-
-const connectToDatabase = async () => {
-    // If we are not in Mongo mode, return null immediately
-    if (!MONGO_URI) return null;
-
-    // If we already have a collection, return it (Warm Start)
-    if (mongoCollection) return mongoCollection;
-
-    // If a connection is already attempting, wait for it (deduplication)
-    if (connectionPromise) return connectionPromise;
-
-    connectionPromise = (async () => {
+// Database / File Helpers (Async for DB support)
+const ensureDatabase = async () => {
+    if (MYSQL_URL) {
+        // MySQL Mode
         try {
-            console.log("⏳ Connecting to MongoDB Atlas...");
-            mongoClient = new MongoClient(MONGO_URI);
-            await mongoClient.connect();
-
-            const db = mongoClient.db('expense_cluster');
-            const col = db.collection('app_data');
-
-            // Ensure global document exists
-            const existing = await col.findOne({ _id: 'global_store' });
-            if (!existing) {
-                console.log("Creating initial global store in MongoDB...");
-                await col.insertOne({ _id: 'global_store', ...getInitialData() });
+            if (!mysqlPool) {
+                mysqlPool = mysql.createPool(MYSQL_URL);
+                console.log("✅ Connected to MySQL");
             }
 
-            console.log("✅ MongoDB Connected: ONLINE MODE ACTIVE");
-            mongoCollection = col;
-            return col;
-        } catch (error) {
-            console.error("❌ MongoDB Connection Creation Failed:", error);
-            // Reset promise so we can try again on next request
-            connectionPromise = null;
-            throw error;
-        }
-    })();
+            // Create table if not exists
+            const connection = await mysqlPool.getConnection();
+            await connection.query(`
+                CREATE TABLE IF NOT EXISTS app_store (
+                    id INT PRIMARY KEY DEFAULT 1,
+                    data LONGTEXT
+                )
+            `);
 
-    return connectionPromise;
-};
-
-// Helper: Read Data (Waits for DB if configured)
-const readData = async () => {
-    if (MONGO_URI) {
-        try {
-            const col = await connectToDatabase();
-            const doc = await col.findOne({ _id: 'global_store' });
-            return doc || getInitialData();
+            // Check for initial data
+            const [rows] = await connection.query('SELECT data FROM app_store WHERE id = 1');
+            if (rows.length === 0) {
+                console.log("Initializing MySQL with default data...");
+                const initialData = JSON.stringify(getInitialData());
+                await connection.query('INSERT INTO app_store (id, data) VALUES (1, ?)', [initialData]);
+            }
+            connection.release();
         } catch (e) {
-            console.error("Read Error (Online):", e);
-            throw new Error("Database Unavailable");
+            console.error("❌ MySQL Connection Error:", e);
         }
     } else {
-        // Local Fallback
+        // File Mode
+        if (!fs.existsSync(DATA_FILE)) {
+            try {
+                fs.writeFileSync(DATA_FILE, JSON.stringify(getInitialData(), null, 2));
+            } catch (e) {
+                console.error("Error creating local DB file:", e);
+            }
+        }
+    }
+};
+
+const readData = async () => {
+    if (mysqlPool) {
+        try {
+            const [rows] = await mysqlPool.query('SELECT data FROM app_store WHERE id = 1');
+            if (rows.length > 0 && rows[0].data) {
+                return typeof rows[0].data === 'string' ? JSON.parse(rows[0].data) : rows[0].data;
+            }
+            return getInitialData();
+        } catch (e) {
+            console.error("MySQL Read Error", e);
+            return getInitialData();
+        }
+    } else {
         try {
             if (!fs.existsSync(DATA_FILE)) {
-                fs.writeFileSync(DATA_FILE, JSON.stringify(getInitialData(), null, 2));
+                await ensureDatabase();
             }
             const data = fs.readFileSync(DATA_FILE, 'utf8');
             const parsed = JSON.parse(data);
             if (!parsed.loginLogs) parsed.loginLogs = [];
             return parsed;
         } catch (err) {
-            console.error("Read Error (Local):", err);
             return getInitialData();
         }
     }
 };
 
-// Helper: Write Data (Waits for DB if configured)
 const writeData = async (data) => {
-    if (MONGO_URI) {
+    if (mysqlPool) {
         try {
-            const col = await connectToDatabase();
-            const { _id, ...cleanData } = data;
-            await col.updateOne(
-                { _id: 'global_store' },
-                { $set: cleanData },
-                { upsert: true }
+            const jsonStr = JSON.stringify(data);
+            await mysqlPool.query(
+                'INSERT INTO app_store (id, data) VALUES (1, ?) ON DUPLICATE KEY UPDATE data = VALUES(data)',
+                [jsonStr]
             );
         } catch (e) {
-            console.error("Write Error (Online):", e);
+            console.error("MySQL Write Error", e);
         }
     } else {
-        // Local Fallback
         fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
     }
 };
+
+// Initialize DB Connection
+ensureDatabase();
 
 // --- ROUTES (Converted to Async) ---
 
