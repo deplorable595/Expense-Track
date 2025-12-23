@@ -149,7 +149,7 @@ export const AdminPanel: React.FC = () => {
                     </CardHeader>
                     <CardContent>
                         <div className="max-h-[400px] overflow-auto pr-2 custom-scrollbar">
-                            <table className="w-full text-sm text-left min-w-[500px]">
+                            <table className="w-full text-sm text-left">
                                 <thead className="text-xs text-muted-foreground uppercase bg-white/5 sticky top-0">
                                     <tr>
                                         <th className="p-2">User</th>
@@ -198,7 +198,7 @@ export const AdminPanel: React.FC = () => {
                     </CardHeader>
                     <CardContent>
                         <div className="max-h-[400px] overflow-auto pr-2 custom-scrollbar">
-                            <table className="w-full text-sm text-left min-w-[500px]">
+                            <table className="w-full text-sm text-left">
                                 <thead className="text-xs text-muted-foreground uppercase bg-white/5 sticky top-0">
                                     <tr>
                                         <th className="p-2">Time</th>
