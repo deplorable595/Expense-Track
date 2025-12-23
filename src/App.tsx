@@ -8,7 +8,7 @@ import { AddExpenseModal } from './components/AddExpenseModal';
 import { Button } from './components/ui/Button';
 import { CyberpunkLoader } from './components/CyberpunkLoader';
 import { Login } from './components/Login';
-import { Plus, WalletCards, LogOut, User, Wifi, ChevronDown, Monitor, ShieldAlert } from 'lucide-react';
+import { Plus, WalletCards, LogOut, User, Wifi, ChevronDown, Monitor, ShieldAlert, Sun, Moon } from 'lucide-react';
 import { CyberpunkBackground } from './components/CyberpunkBackground';
 import { startOfMonth, endOfMonth, subMonths, addMonths, isWithinInterval } from 'date-fns';
 import { AdminPanel } from './components/AdminPanel';
@@ -43,6 +43,14 @@ function Dashboard({ user, onLogout }: DashboardProps) {
   const handleNextMonth = () => setViewDate(prev => addMonths(prev, 1));
   const handleReset = () => setViewDate(new Date());
 
+  /* Theme Management */
+  // Reverted: Defaulting to true (Dark) but allowing toggle logic to exist
+  const [isDark, setIsDark] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    // If no preference saved, default to dark (true)
+    return saved !== 'light';
+  });
+
   /* Simulate loading for demo purposes, or use real data usage */
   const [isLoading, setIsLoading] = useState(true);
 
@@ -55,6 +63,19 @@ function Dashboard({ user, onLogout }: DashboardProps) {
       return isWithinInterval(d, { start, end });
     });
   }, [expenses, viewDate]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDark) {
+      root.classList.add('dark');
+      root.classList.remove('light');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      root.classList.add('light');
+      root.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDark]);
 
   useEffect(() => {
     // Simulating initial load
@@ -72,10 +93,10 @@ function Dashboard({ user, onLogout }: DashboardProps) {
   return (
     <>
       <CyberpunkBackground />
-      <div className="min-h-screen font-sans text-foreground transition-colors duration-500 bg-transparent">
+      <div className={`min-h-screen font-sans text-foreground transition-colors duration-500 ${!isDark ? 'bg-white/50' : 'bg-transparent'}`}>
 
         {/* Header */}
-        <header className="sticky top-0 z-40 w-full border-b backdrop-blur-md transition-colors duration-500 border-white/10 bg-black/80">
+        <header className={`sticky top-0 z-40 w-full border-b backdrop-blur-md transition-colors duration-500 ${isDark ? 'border-white/10 bg-black/80' : 'border-black/5 bg-white/80'}`}>
           <div className="container mx-auto flex h-16 items-center justify-between px-4">
 
             {/* Left Side: Logo */}
@@ -104,7 +125,7 @@ function Dashboard({ user, onLogout }: DashboardProps) {
               <div className="relative">
                 <button
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 ${isAdmin ? 'border-red-500/50 bg-red-950/30 hover:bg-red-900/40' : 'border-primary/30 bg-black/40 hover:bg-primary/10'}`}
+                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-primary/20 ${isAdmin ? 'border-red-500/50 bg-red-950/30 hover:bg-red-900/40' : (isDark ? 'border-primary/30 bg-black/40 hover:bg-primary/10' : 'border-primary/30 bg-white hover:bg-primary/5')}`}
                 >
                   <div className={`flex h-6 w-6 items-center justify-center rounded-full ${isAdmin ? 'bg-red-500/20 text-red-500' : 'bg-primary/20 text-primary'}`}>
                     <User className="h-3.5 w-3.5" />
@@ -119,7 +140,7 @@ function Dashboard({ user, onLogout }: DashboardProps) {
                     {/* Overlay to close on click outside */}
                     <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)} />
 
-                    <div className="absolute right-0 top-full mt-2 w-64 rounded-md border backdrop-blur-xl shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-200 border-white/10 bg-black/95 shadow-[0_0_30px_rgba(0,0,0,0.8)]">
+                    <div className={`absolute right-0 top-full mt-2 w-64 rounded-md border backdrop-blur-xl shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-200 ${isDark ? 'border-white/10 bg-black/95 shadow-[0_0_30px_rgba(0,0,0,0.8)]' : 'border-black/5 bg-white/95 shadow-xl ring-1 ring-black/5'}`}>
 
                       {/* Header / Info */}
                       <div className="p-4 border-b border-white/5 bg-white/5">
@@ -162,7 +183,14 @@ function Dashboard({ user, onLogout }: DashboardProps) {
 
                       {/* Menu Items */}
                       <div className="p-2">
-                        <div className="px-2 py-1.5 text-xs text-muted-foreground font-mono hover:text-foreground cursor-pointer rounded transition-colors mb-1 flex items-center gap-2 hover:bg-white/5">
+                        <div
+                          onClick={() => setIsDark(!isDark)}
+                          className={`px-2 py-1.5 text-xs text-muted-foreground font-mono hover:text-foreground cursor-pointer rounded transition-colors mb-1 flex items-center gap-2 ${isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}>
+                          {isDark ? <Sun className="h-3 w-3 text-yellow-500" /> : <Moon className="h-3 w-3 text-indigo-500" />}
+                          {isDark ? 'SWITCH TO LIGHT' : 'SWITCH TO DARK'}
+                        </div>
+
+                        <div className={`px-2 py-1.5 text-xs text-muted-foreground font-mono hover:text-foreground cursor-pointer rounded transition-colors mb-1 flex items-center gap-2 ${isDark ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}>
                           <Monitor className="h-3 w-3" /> System Settings
                         </div>
                         <button
@@ -174,7 +202,7 @@ function Dashboard({ user, onLogout }: DashboardProps) {
                         </button>
                       </div>
 
-                      <div className="p-2 text-[10px] text-center text-muted-foreground/50 font-mono border-t bg-black/50 border-white/5">
+                      <div className={`p-2 text-[10px] text-center text-muted-foreground/50 font-mono border-t ${isDark ? 'bg-black/50 border-white/5' : 'bg-gray-50 border-black/5'}`}>
                         V1.0.3-SYNCED #392
                       </div>
                     </div>
@@ -235,7 +263,6 @@ function Dashboard({ user, onLogout }: DashboardProps) {
     </>
   );
 }
-
 function App() {
   const [user, setUser] = useState<string | null>(() => localStorage.getItem('current_user'));
 
