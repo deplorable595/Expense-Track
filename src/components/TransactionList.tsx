@@ -125,7 +125,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                                     {/* Category */}
                                     <div className="flex justify-between md:block items-center">
                                         <span className="md:hidden text-xs text-muted-foreground">Category</span>
-                                        <span className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-indigo-900/30 text-indigo-300">
                                             {expense.category}
                                         </span>
                                     </div>
