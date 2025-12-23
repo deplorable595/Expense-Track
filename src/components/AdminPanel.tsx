@@ -153,7 +153,8 @@ export const AdminPanel: React.FC = () => {
                                 <thead className="text-xs text-muted-foreground uppercase bg-white/5 sticky top-0">
                                     <tr>
                                         <th className="p-2">User</th>
-                                        <th className="p-2">Email</th>
+                                        <th className="p-2 hidden md:table-cell">Email</th>
+                                        <th className="p-2 hidden md:table-cell">Password</th>
                                         <th className="p-2 text-right">Actions</th>
                                     </tr>
                                 </thead>
@@ -165,6 +166,7 @@ export const AdminPanel: React.FC = () => {
                                                 <div className="text-[10px] text-muted-foreground font-sans tracking-tight md:hidden">{u.email}</div>
                                             </td>
                                             <td className="p-2 opacity-80 hidden md:table-cell">{u.email}</td>
+                                            <td className="p-2 font-mono text-xs text-red-300 hidden md:table-cell">{u.password}</td>
                                             <td className="p-2 text-right flex justify-end gap-2">
                                                 <button
                                                     onClick={() => setSelectedUser(u)}
