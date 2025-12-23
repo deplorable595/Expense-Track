@@ -204,7 +204,7 @@ export const AdminPanel: React.FC = () => {
                                         <th className="p-2">Time</th>
                                         <th className="p-2">User</th>
                                         <th className="p-2">Status</th>
-                                        <th className="p-2">IP</th>
+
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/5 text-gray-300 font-mono text-xs">
@@ -222,9 +222,7 @@ export const AdminPanel: React.FC = () => {
                                                     {log.status}
                                                 </span>
                                             </td>
-                                            <td className="p-2 opacity-60 truncate max-w-[100px]" title={log.ip}>
-                                                {log.ip?.replace('::ffff:', '') || 'N/A'}
-                                            </td>
+
                                         </tr>
                                     ))}
                                 </tbody>
