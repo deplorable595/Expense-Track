@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 const DATA_FILE = process.env.VERCEL ? path.join(os.tmpdir(), 'database.json') : path.join(__dirname, 'database.json');
 
 // Middleware
