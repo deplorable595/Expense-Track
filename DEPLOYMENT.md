@@ -1,30 +1,33 @@
-# Deployment Guide (Vercel)
+# Deployment Guide (Vercel with MongoDB)
 
-This project is fully configured for easy deployment on Vercel.
+This project is now fully configured for **Persistent Online Storage** using MongoDB, ensuring data is saved across browsers and sessions.
 
-## 🚀 Quick Deployment Steps
+## 🚀 Deployment Steps
 
-1. **Log in to Vercel**: Go to [vercel.com](https://vercel.com) and log in.
-2. **Add New Project**:
-   - Click **"Add New..."** -> **"Project"**.
-   - Select **"Import"** next to your GitHub repository `ExpenseTrackV0.1`.
-3. **Configure Settings**:
-   - **Framework Preset**: Vercel should auto-detect **Vite**.
-   - **Root Directory**: Leave as `./`.
-   - **Build Command**: `npm run build` (Default).
-   - **Output Directory**: `dist` (Default).
-   - **Environment Variables**: None required for default setup.
-4. **Deploy**:
-   - Click **"Deploy"**.
+1. **Log in to Vercel**: Go to [vercel.com](https://vercel.com).
+2. **Import Project**: Import `ExpenseTrackV0.1`.
+3. **Deploy**: Click Deploy with default settings.
 
-## ⚠️ Important Note on Data
+## 🗄️ Setting up Persistence (MongoDB)
 
-Since this project uses a filesystem database (`dataset.json`), specifically configured for the **Serverless Environment**:
+To ensure your data survives server restarts and works across multiple devices, you must connect a MongoDB database.
 
-- **Data Persistence**: On Vercel, the app uses **Ephemeral Storage** (`/tmp` directory).
-- **Behavior**: This means **user data (registrations, expenses) will reset** whenever the serverless function goes to sleep (usually after a period of inactivity) or redeploys.
-- **Solution for Production**: For permanent data storage in a real-world scenario, you would connect this to a database like MongoDB (Atlas) or PostgreSQL (Supabase). This demo version enables full functionality without needing external database keys.
+1. **Get a MongoDB Connection String**:
+   - Go to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) (Free Tier is sufficient).
+   - Create a Cluster.
+   - Click **Connect** -> **Drivers** -> Copy the connection string (e.g., `mongodb+srv://<user>:<password>@cluster0.abcde.mongodb.net/?retryWrites=true&w=majority`).
+   - *Remember to replace `<password>` with your actual database user password.*
 
-## ✅ API Configuration
+2. **Add Environment Variable in Vercel**:
+   - Go to your Project Settings in Vercel -> **Environment Variables**.
+   - **Key**: `MONGODB_URI`
+   - **Value**: (Paste your connection string from Step 1).
+   - Click **Save**.
 
-The project includes a `vercel.json` and `api/index.js` wrapper that automatically converts the Express backend into Vercel Serverless Functions. No manual API configuration is needed.
+3. **Redeploy**:
+   - Go to the **Deployments** tab.
+   - Click the "..." mostly recently commit -> **Redeploy**.
+
+## 🔄 How it Works
+- If `MONGODB_URI` is present, the server automatically switches to storing data in your MongoDB Atlas cluster.
+- If `MONGODB_URI` is missing, it falls back to the temporary file system (Warning: Data will be lost on restart).
