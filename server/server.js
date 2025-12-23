@@ -19,6 +19,8 @@ app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 
 // MongoDB Configuration
+// MongoDB Configuration
+let mongoClient = null;
 let mongoCollection = null;
 const MONGO_URI = process.env.MONGODB_URI;
 
@@ -33,83 +35,96 @@ const getInitialData = () => ({
     loginLogs: []
 });
 
-// Database / File Helpers (Async for DB support)
-const ensureDatabase = async () => {
-    if (MONGO_URI) {
-        // Mongo Mode
+// Robust Database Connection (Singleton Promise)
+let connectionPromise = null;
+
+const connectToDatabase = async () => {
+    // If we are not in Mongo mode, return null immediately
+    if (!MONGO_URI) return null;
+
+    // If we already have a collection, return it (Warm Start)
+    if (mongoCollection) return mongoCollection;
+
+    // If a connection is already attempting, wait for it (deduplication)
+    if (connectionPromise) return connectionPromise;
+
+    connectionPromise = (async () => {
         try {
-            if (!mongoCollection) {
-                const client = new MongoClient(MONGO_URI);
-                await client.connect();
-                const db = client.db('expense_cluster');
-                mongoCollection = db.collection('app_data');
-                console.log("✅ Connected to MongoDB");
+            console.log("⏳ Connecting to MongoDB Atlas...");
+            mongoClient = new MongoClient(MONGO_URI);
+            await mongoClient.connect();
+
+            const db = mongoClient.db('expense_cluster');
+            const col = db.collection('app_data');
+
+            // Ensure global document exists
+            const existing = await col.findOne({ _id: 'global_store' });
+            if (!existing) {
+                console.log("Creating initial global store in MongoDB...");
+                await col.insertOne({ _id: 'global_store', ...getInitialData() });
             }
 
-            const doc = await mongoCollection.findOne({ _id: 'global_store' });
-            if (!doc) {
-                console.log("Initializing MongoDB with default data...");
-                await mongoCollection.insertOne({ _id: 'global_store', ...getInitialData() });
-            }
-        } catch (e) {
-            console.error("❌ MongoDB Connection Error:", e);
+            console.log("✅ MongoDB Connected: ONLINE MODE ACTIVE");
+            mongoCollection = col;
+            return col;
+        } catch (error) {
+            console.error("❌ MongoDB Connection Creation Failed:", error);
+            // Reset promise so we can try again on next request
+            connectionPromise = null;
+            throw error;
         }
-    } else {
-        // File Mode
-        if (!fs.existsSync(DATA_FILE)) {
-            try {
-                fs.writeFileSync(DATA_FILE, JSON.stringify(getInitialData(), null, 2));
-            } catch (e) {
-                console.error("Error creating local DB file:", e);
-            }
-        }
-    }
+    })();
+
+    return connectionPromise;
 };
 
+// Helper: Read Data (Waits for DB if configured)
 const readData = async () => {
-    if (mongoCollection) {
+    if (MONGO_URI) {
         try {
-            const doc = await mongoCollection.findOne({ _id: 'global_store' });
+            const col = await connectToDatabase();
+            const doc = await col.findOne({ _id: 'global_store' });
             return doc || getInitialData();
         } catch (e) {
-            console.error("Mongo Read Error", e);
-            return getInitialData();
+            console.error("Read Error (Online):", e);
+            throw new Error("Database Unavailable");
         }
     } else {
+        // Local Fallback
         try {
             if (!fs.existsSync(DATA_FILE)) {
-                await ensureDatabase();
+                fs.writeFileSync(DATA_FILE, JSON.stringify(getInitialData(), null, 2));
             }
             const data = fs.readFileSync(DATA_FILE, 'utf8');
             const parsed = JSON.parse(data);
             if (!parsed.loginLogs) parsed.loginLogs = [];
             return parsed;
         } catch (err) {
+            console.error("Read Error (Local):", err);
             return getInitialData();
         }
     }
 };
 
+// Helper: Write Data (Waits for DB if configured)
 const writeData = async (data) => {
-    if (mongoCollection) {
+    if (MONGO_URI) {
         try {
-            // Remove _id from data if present to avoid immutable field error on update
+            const col = await connectToDatabase();
             const { _id, ...cleanData } = data;
-            await mongoCollection.updateOne(
+            await col.updateOne(
                 { _id: 'global_store' },
                 { $set: cleanData },
                 { upsert: true }
             );
         } catch (e) {
-            console.error("Mongo Write Error", e);
+            console.error("Write Error (Online):", e);
         }
     } else {
+        // Local Fallback
         fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
     }
 };
-
-// Initialize DB Connection
-ensureDatabase();
 
 // --- ROUTES (Converted to Async) ---
 
