@@ -17,7 +17,7 @@ const DATA_FILE = process.env.VERCEL ? path.join(os.tmpdir(), 'database.json') :
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 
-// Initial Data Template
+// Initial Data Template 
 const getInitialData = () => ({
     users: {
         'Admin': { password: 'admin1234', email: 'sivuu143@gmail.com' }
