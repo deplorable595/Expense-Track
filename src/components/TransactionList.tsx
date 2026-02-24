@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { format } from 'date-fns';
 import type { Expense, SortConfig } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
@@ -34,9 +34,14 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     });
 
     // Reset page when filters change
-    useEffect(() => {
+    const [prevSearchTerm, setPrevSearchTerm] = useState(searchTerm);
+    const [prevExpensesLength, setPrevExpensesLength] = useState(expenses.length);
+
+    if (searchTerm !== prevSearchTerm || expenses.length !== prevExpensesLength) {
+        setPrevSearchTerm(searchTerm);
+        setPrevExpensesLength(expenses.length);
         setCurrentPage(1);
-    }, [searchTerm, expenses.length]);
+    }
 
     const totalPages = Math.ceil(filteredExpenses.length / ITEMS_PER_PAGE);
     const paginatedExpenses = filteredExpenses.slice(
